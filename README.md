@@ -22,3 +22,15 @@ A document root (`/var/www/html`) ellenőrzése, majd saját `index.html` létre
     ls -l /var/www/html
 
 - Ha az ügyfél oldala helyett az alap oldal látszik: rossz mappa vagy hiányzó `index.html`.
+
+## 3. lépés: két weboldal egy szerveren (virtual host)
+
+Két ügyfél, két mappa, két Nginx server block. A beállítás a `sites-available`
+mappában van, a `sites-enabled` mappába symlinkkel kapcsolva be.
+
+    sudo nginx -t
+    sudo systemctl reload nginx
+    curl -H "Host: ugyfel1.local" http://localhost
+
+- Ha egy nevet nem ismer fel a szerver, a default oldalt adja vissza.
+- Újratöltés előtt mindig `nginx -t`, éles szerveren `reload`, nem `restart`.
