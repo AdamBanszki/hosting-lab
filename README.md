@@ -34,3 +34,15 @@ mappában van, a `sites-enabled` mappába symlinkkel kapcsolva be.
 
 - Ha egy nevet nem ismer fel a szerver, a default oldalt adja vissza.
 - Újratöltés előtt mindig `nginx -t`, éles szerveren `reload`, nem `restart`.
+
+## 4. lépés: saját DNS-zóna (BIND9)
+
+Zóna: `hosting.test` (A, NS, CNAME rekordok). Zónafájl: `/etc/bind/db.hosting.test`.
+
+    sudo named-checkconf
+    sudo named-checkzone hosting.test /etc/bind/db.hosting.test
+    dig @127.0.0.1 ugyfel1.hosting.test +short
+
+- Módosításnál a SOA serial számot mindig növelni kell.
+- A rekordok neveinek végén a pont számít (teljes név).
+- Az `aa` jelzés a dig kimenetében: hiteles (authoritative) válasz.
