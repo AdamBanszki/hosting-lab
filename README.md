@@ -46,3 +46,17 @@ Zóna: `hosting.test` (A, NS, CNAME rekordok). Zónafájl: `/etc/bind/db.hosting
 - Módosításnál a SOA serial számot mindig növelni kell.
 - A rekordok neveinek végén a pont számít (teljes név).
 - Az `aa` jelzés a dig kimenetében: hiteles (authoritative) válasz.
+
+## 5. lépés: DNS és Nginx összekötése
+
+Az Nginx `server_name` értékeit a DNS-zóna nevéhez igazítottuk (`*.hosting.test`),
+a gép resolverét pedig a NetworkManagerben a saját BIND-ra állítottuk
+(tartalék: a VMware DNS).
+
+    sudo nmcli con mod "Wired connection 1" ipv4.dns "127.0.0.1 192.168.80.2" ipv4.ignore-auto-dns yes
+    dig ugyfel1.hosting.test +short
+    curl http://ugyfel1.hosting.test
+
+- A DNS egyedül nem elég: a `www` névnek az Nginx `server_name` sorában is szerepelnie kell,
+  különben a default blokk válaszol.
+- Visszaállítás: `sudo nmcli con mod "Wired connection 1" ipv4.dns "" ipv4.ignore-auto-dns no`
