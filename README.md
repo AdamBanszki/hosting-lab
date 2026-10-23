@@ -60,3 +60,17 @@ a gép resolverét pedig a NetworkManagerben a saját BIND-ra állítottuk
 - A DNS egyedül nem elég: a `www` névnek az Nginx `server_name` sorában is szerepelnie kell,
   különben a default blokk válaszol.
 - Visszaállítás: `sudo nmcli con mod "Wired connection 1" ipv4.dns "" ipv4.ignore-auto-dns no`
+
+## 6. lépés: HTTPS (önaláírt tanúsítvány)
+
+Kulcs és tanúsítvány az OpenSSL-lel (`/etc/ssl/hosting-lab/`), az Nginxben második
+server block a 443-as porton.
+
+    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 ...
+    sudo openssl x509 -in /etc/ssl/hosting-lab/ugyfel1.crt -noout -subject -issuer -dates
+    curl --cacert /etc/ssl/hosting-lab/ugyfel1.crt https://ugyfel1.hosting.test
+
+- A titkos kulcs jogosultsága 600 (csak root).
+- Önaláírt tanúsítványnál az `issuer` és a `subject` megegyezik, a böngésző figyelmeztet.
+- Éles környezetben a certbot (Let's Encrypt) automatikusan igényli és újítja a tanúsítványt.
+- Support: lejárat (`-dates`), név egyezés (`subjectAltName`) és a 443-as port figyelése az első ellenőrzések.
