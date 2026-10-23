@@ -74,3 +74,17 @@ server block a 443-as porton.
 - Önaláírt tanúsítványnál az `issuer` és a `subject` megegyezik, a böngésző figyelmeztet.
 - Éles környezetben a certbot (Let's Encrypt) automatikusan igényli és újítja a tanúsítványt.
 - Support: lejárat (`-dates`), név egyezés (`subjectAltName`) és a 443-as port figyelése az első ellenőrzések.
+
+## 7. lépés: SFTP-hozzáférés az ügyfélnek (chroot)
+
+Az ügyfél (`ugyfel1`) csak SFTP-n léphet be, és csak a saját mappájába van bezárva.
+
+    sudo useradd -g sftpusers -d /var/www/ugyfel1.local -s /usr/sbin/nologin ugyfel1
+    sudo chown root:root /var/www/ugyfel1.local
+    sudo chown -R ugyfel1:sftpusers /var/www/ugyfel1.local/html
+    sudo sshd -t && sudo systemctl reload ssh
+    sftp ugyfel1@localhost
+
+- A chroot mappa root tulajdonú és nem írható másoknak, különben az SSH megtagadja a belépést.
+- Az ügyfél írási joga csak a `html` almappában van.
+- Tipikus support-hibák: rossz mappába feltöltés, hibás tulajdonos/jogosultság (403).
