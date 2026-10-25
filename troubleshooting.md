@@ -22,3 +22,11 @@
 - **Ellenőrzés:** `dig` (a név jó), `curl -I` (404, vagyis a kérés elérte az Nginxet), `sudo tail /var/log/nginx/error.log` (az Nginx által keresett útvonal), `grep root` és `ls` (a beállítás és a valódi mappa összevetése).
 - **Javítás:** a `root` útvonal javítása, majd `sudo nginx -t && sudo systemctl reload nginx`.
 - **Megjegyzés:** az `nginx -t` nem fogja meg a nem létező mappát, mert az logikai hiba. Javítás után `curl`-lel is tesztelni kell.
+
+## 4. 403 Forbidden
+
+- **Tünet:** az `ugyfel2.hosting.test` 403-at ad, miután az ügyfél feltöltötte az új fájlt.
+- **Ok:** az `index.html` jogosultsága `000` volt, ezért az Nginx (`www-data`) nem tudta olvasni.
+- **Ellenőrzés:** `curl -I` (403, a kérés elérte az Nginxet), `sudo tail /var/log/nginx/error.log` (`Permission denied`), `ls -l` (a jogosultság oszlop `----------`).
+- **Javítás:** `sudo chmod 644 /var/www/ugyfel2.local/html/index.html`.
+- **Megkülönböztetés:** 404 esetén a napló `No such file or directory`-t ír (a fájl nincs ott), 403 esetén `Permission denied`-t (a fájl ott van, de nem olvasható).
