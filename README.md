@@ -1,90 +1,71 @@
 # Hosting lab
 
-Mini hosting-környezet felépítése VMware alatt futó Kali Linuxon (Debian-alapú).
-Cél: a webhosting support alapjainak gyakorlása (Nginx, DNS, HTTPS, SFTP, hibaelhárítás).
+Mini hosting-környezet VMware alatt futó Kali Linuxon (Debian-alapú): DNS, webszerver, HTTPS, SFTP, és hibaelhárítási gyakorlat L1 support szemlélettel.
 
-## 1. lépés: Nginx telepítése és ellenőrzése
+A környezetet útmutató segítségével, lépésről lépésre építettem fel. A cél az volt, hogy megértsem, hogyan működik egy weboldal elérése a névfeloldástól az oldalig, és hogy gyakoroljam a hibakeresést.
 
-    sudo apt update
-    sudo apt install nginx -y
-    systemctl status nginx
-    sudo ss -tlnp | grep :80
-    curl -I http://localhost
+## Mit tartalmaz
 
-- `ss` kimenetében: az Nginx figyel a 80-as porton (LISTEN).
-- `curl` válasza: `HTTP/1.1 200 OK`, vagyis a webszerver működik.
+| Terület | Eszköz | Mit gyakoroltam |
+|---|---|---|
+| DNS | BIND9 | saját zóna (`hosting.test`), A, NS, CNAME és SOA rekordok |
+| Webszerver | Nginx | két ügyfél egy szerveren (virtual host), `www` alias |
+| HTTPS | OpenSSL | önaláírt tanúsítvány, 443-as port |
+| Fájlfeltöltés | OpenSSH | SFTP-hozzáférés az ügyfélnek, a saját mappájába zárva (chroot) |
+| Hibaelhárítás | dig, curl, naplók | öt szándékosan előidézett hiba megkeresése és javítása |
 
-## 2. lépés: saját weboldal
+## Egy kérés útja
 
-A document root (`/var/www/html`) ellenőrzése, majd saját `index.html` létrehozása.
+    böngésző
+      → a gép DNS-beállítása (127.0.0.1)
+      → BIND: named.conf.local → db.hosting.test → IP-cím
+      → Nginx: sites-enabled → sites-available/ugyfel1.local
+      → /var/www/ugyfel1.local/html/index.html
 
-    grep root /etc/nginx/sites-enabled/default
-    ls -l /var/www/html
+A DNS és az Nginx két külön program, külön beállítással. A DNS csak az IP-címet adja, az Nginx a kérésben szereplő név alapján választ oldalt. Ezért egy névnek két helyen kell szerepelnie: a zónafájlban és az Nginx `server_name` sorában.
 
-- Ha az ügyfél oldala helyett az alap oldal látszik: rossz mappa vagy hiányzó `index.html`.
+## Fájltérkép
 
-## 3. lépés: két weboldal egy szerveren (virtual host)
+| Fájl | Szolgáltatás | Szerepe |
+|---|---|---|
+| `/etc/bind/db.hosting.test` | BIND | a zóna rekordjai (név és IP-cím párosítása) |
+| `/etc/bind/named.conf.local` | BIND | megadja, mely zónáért felel és hol a fájlja |
+| `/etc/nginx/sites-available/` | Nginx | az ügyfelek server blockjai (név, port, mappa) |
+| `/etc/nginx/sites-enabled/` | Nginx | symlinkek, amelyek bekapcsolják a beállításokat |
+| `/var/www/ugyfel*.local/html/` | Nginx | az ügyfelek oldalai (document root) |
+| `/etc/ssl/hosting-lab/` | Nginx | a titkos kulcs és a tanúsítvány |
+| `/etc/ssh/sshd_config.d/sftp-ugyfel.conf` | SSH | az SFTP-korlátozás (csak fájlátvitel, chroot) |
 
-Két ügyfél, két mappa, két Nginx server block. A beállítás a `sites-available`
-mappában van, a `sites-enabled` mappába symlinkkel kapcsolva be.
+Minden programnál két dolog kell: a **tartalom** (a beállítás) és a **kapcsoló** (ami miatt a program használja), módosítás után pedig **újratöltés**.
 
-    sudo nginx -t
-    sudo systemctl reload nginx
-    curl -H "Host: ugyfel1.local" http://localhost
+## Hibaelhárítás
 
-- Ha egy nevet nem ismer fel a szerver, a default oldalt adja vissza.
-- Újratöltés előtt mindig `nginx -t`, éles szerveren `reload`, nem `restart`.
+Részletes leírás: [troubleshooting.md](troubleshooting.md)
 
-## 4. lépés: saját DNS-zóna (BIND9)
+Az alap hibakeresés három kérdés:
 
-Zóna: `hosting.test` (A, NS, CNAME rekordok). Zónafájl: `/etc/bind/db.hosting.test`.
+1. **Feloldódik a név?** (`dig`)
+2. **Fut a szerver és válaszol?** (`curl -I`, `systemctl status`)
+3. **Jó oldalt ad?** (a státuszkód és a hibanapló)
 
-    sudo named-checkconf
-    sudo named-checkzone hosting.test /etc/bind/db.hosting.test
-    dig @127.0.0.1 ugyfel1.hosting.test +short
+| # | Tünet | Ok | Felismerés |
+|---|---|---|---|
+| 1 | az alap oldal jön | hiányzó symlink a `sites-enabled` mappában | a név feloldódik, de rossz oldal jön |
+| 2 | nem tölt be | rossz IP a zónafájlban | `dig` más IP-t ad, mint a szerver címe |
+| 3 | 404 | rossz `root` útvonal | a naplóban `No such file or directory` |
+| 4 | 403 | rossz fájljogosultság | a naplóban `Permission denied` |
+| 5 | minden oldal elérhetetlen | leállt az Nginx | `inactive (dead)`, a 80-as portot senki nem figyeli |
 
-- Módosításnál a SOA serial számot mindig növelni kell.
-- A rekordok neveinek végén a pont számít (teljes név).
-- Az `aa` jelzés a dig kimenetében: hiteles (authoritative) válasz.
+## Tanulságok
 
-## 5. lépés: DNS és Nginx összekötése
+- Az `nginx -t` a nyelvtani hibát fogja meg, a logikai hibát (létező, de rossz útvonal) nem. Javítás után `curl`-lel is tesztelni kell.
+- A hibanapló az Nginx szemszögét mutatja: ha egy útvonal ott másként szerepel, mint a lemezen, a beállításban van az eltérés.
+- Ha a `curl` rossz oldalt kap, a kérés elérte a szervert. Ha nem tud csatlakozni, a kérés meg sem érkezett (rossz IP, leállt szolgáltatás vagy zárt port).
+- Zónafájl módosításánál a SOA serial számot növelni kell, különben a másodlagos névszerverek nem veszik észre a változást.
 
-Az Nginx `server_name` értékeit a DNS-zóna nevéhez igazítottuk (`*.hosting.test`),
-a gép resolverét pedig a NetworkManagerben a saját BIND-ra állítottuk
-(tartalék: a VMware DNS).
+## Korlátok
 
-    sudo nmcli con mod "Wired connection 1" ipv4.dns "127.0.0.1 192.168.80.2" ipv4.ignore-auto-dns yes
-    dig ugyfel1.hosting.test +short
-    curl http://ugyfel1.hosting.test
-
-- A DNS egyedül nem elég: a `www` névnek az Nginx `server_name` sorában is szerepelnie kell,
-  különben a default blokk válaszol.
-- Visszaállítás: `sudo nmcli con mod "Wired connection 1" ipv4.dns "" ipv4.ignore-auto-dns no`
-
-## 6. lépés: HTTPS (önaláírt tanúsítvány)
-
-Kulcs és tanúsítvány az OpenSSL-lel (`/etc/ssl/hosting-lab/`), az Nginxben második
-server block a 443-as porton.
-
-    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 ...
-    sudo openssl x509 -in /etc/ssl/hosting-lab/ugyfel1.crt -noout -subject -issuer -dates
-    curl --cacert /etc/ssl/hosting-lab/ugyfel1.crt https://ugyfel1.hosting.test
-
-- A titkos kulcs jogosultsága 600 (csak root).
-- Önaláírt tanúsítványnál az `issuer` és a `subject` megegyezik, a böngésző figyelmeztet.
-- Éles környezetben a certbot (Let's Encrypt) automatikusan igényli és újítja a tanúsítványt.
-- Support: lejárat (`-dates`), név egyezés (`subjectAltName`) és a 443-as port figyelése az első ellenőrzések.
-
-## 7. lépés: SFTP-hozzáférés az ügyfélnek (chroot)
-
-Az ügyfél (`ugyfel1`) csak SFTP-n léphet be, és csak a saját mappájába van bezárva.
-
-    sudo useradd -g sftpusers -d /var/www/ugyfel1.local -s /usr/sbin/nologin ugyfel1
-    sudo chown root:root /var/www/ugyfel1.local
-    sudo chown -R ugyfel1:sftpusers /var/www/ugyfel1.local/html
-    sudo sshd -t && sudo systemctl reload ssh
-    sftp ugyfel1@localhost
-
-- A chroot mappa root tulajdonú és nem írható másoknak, különben az SSH megtagadja a belépést.
-- Az ügyfél írási joga csak a `html` almappában van.
-- Tipikus support-hibák: rossz mappába feltöltés, hibás tulajdonos/jogosultság (403).
+- A `hosting.test` kitalált név, nincs delegálás, ezért a rekordokat csak az a gép látja, amelyik a lokális BIND-ot kérdezi.
+- A tanúsítvány önaláírt, ezért a kliensek figyelmeztetnek. Éles környezetben a Let's Encrypt (certbot) adna megbízható tanúsítványt.
+- Éles környezetben a DNS-rekordokat általában a regisztrátor vagy egy DNS-szolgáltató paneljén kezelik, a háttérben azonban ugyanezek a zónafájlok állnak.
+- A labor jelszavai csak tesztelésre szolgáltak, a repó nem tartalmaz jelszót vagy kulcsot.
