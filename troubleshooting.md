@@ -30,3 +30,11 @@
 - **Ellenőrzés:** `curl -I` (403, a kérés elérte az Nginxet), `sudo tail /var/log/nginx/error.log` (`Permission denied`), `ls -l` (a jogosultság oszlop `----------`).
 - **Javítás:** `sudo chmod 644 /var/www/ugyfel2.local/html/index.html`.
 - **Megkülönböztetés:** 404 esetén a napló `No such file or directory`-t ír (a fájl nincs ott), 403 esetén `Permission denied`-t (a fájl ott van, de nem olvasható).
+
+## 5. Az oldal egyáltalán nem tölt be (leállt a webszerver)
+
+- **Tünet:** minden ügyfél oldala elérhetetlen, a `curl` "Could not connect" hibát ad.
+- **Ok:** az Nginx szolgáltatás leállt, a 80-as porton nem figyel semmi.
+- **Ellenőrzés:** `dig` (a név jó IP-re mutat, tehát nem DNS-hiba), mindkét ügyfél oldala elérhetetlen (közös ok), `systemctl status nginx` (`inactive (dead)`), `sudo ss -tlnp | grep :80` (üres).
+- **Javítás:** `sudo systemctl start nginx`. Élesben előtte `sudo journalctl -u nginx -n 20 --no-pager`, hogy kiderüljön, miért állt le.
+- **Megkülönböztetés a rossz A rekordtól:** ott a `dig` rossz IP-t ad, itt a DNS jó, csak a szerver program nem fut.
