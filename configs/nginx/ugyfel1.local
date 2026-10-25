@@ -1,0 +1,17 @@
+server {
+    listen 80;
+    server_name ugyfel1.hosting.test www.ugyfel1.hosting.test;
+    root /var/www/ugyfel1.local/html;
+    index index.html;
+}
+
+server {
+    listen 443 ssl;
+    server_name ugyfel1.hosting.test www.ugyfel1.hosting.test;
+
+    ssl_certificate     /etc/ssl/hosting-lab/ugyfel1.crt;
+    ssl_certificate_key /etc/ssl/hosting-lab/ugyfel1.key;
+
+    root /var/www/ugyfel1.local/html;
+    index index.html;
+}

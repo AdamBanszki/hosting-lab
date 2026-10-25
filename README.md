@@ -69,3 +69,7 @@ Az alap hibakeresés három kérdés:
 - A tanúsítvány önaláírt, ezért a kliensek figyelmeztetnek. Éles környezetben a Let's Encrypt (certbot) adna megbízható tanúsítványt.
 - Éles környezetben a DNS-rekordokat általában a regisztrátor vagy egy DNS-szolgáltató paneljén kezelik, a háttérben azonban ugyanezek a zónafájlok állnak.
 - A labor jelszavai csak tesztelésre szolgáltak, a repó nem tartalmaz jelszót vagy kulcsot.
+
+## Konfigurációs fájlok
+
+A `configs/` mappában a labor beállításainak másolatai találhatók (BIND zóna, Nginx server blockok, SFTP-szabály, az oldalak). Az eredeti fájlok a `/etc` és a `/var/www` mappákban vannak, a másolat csak szemléltetés. A titkos kulcs és a tanúsítvány szándékosan nincs a repóban.

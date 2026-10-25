@@ -1,0 +1,12 @@
+$TTL 300
+@       IN  SOA ns1.hosting.test. admin.hosting.test. (
+                2026102101  ; serial
+                3600        ; refresh
+                900         ; retry
+                604800      ; expire
+                300 )       ; negatív cache
+@       IN  NS  ns1.hosting.test.
+ns1     IN  A   192.168.80.139
+ugyfel1 IN  A   192.168.80.139
+ugyfel2 IN  A   192.168.80.139
+www.ugyfel1 IN CNAME ugyfel1

@@ -1,0 +1,6 @@
+server {
+    listen 80;
+    server_name ugyfel2.hosting.test;
+    root /var/www/ugyfel2.local/html;
+    index index.html;
+}

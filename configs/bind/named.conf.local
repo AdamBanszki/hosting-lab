@@ -1,0 +1,8 @@
+//
+// Do any local configuration here
+//
+
+zone "hosting.test" {
+    type master;
+    file "/etc/bind/db.hosting.test";
+};
