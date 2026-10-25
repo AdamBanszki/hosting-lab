@@ -14,3 +14,11 @@
 - **Ellenőrzés:** `dig` (a név feloldódik, de az IP nem egyezik a működő `ugyfel1` és a szerver `eth0` címével). A kérés nem érte el az Nginxet, ezért az Nginx fájljai nem érintettek.
 - **Javítás:** a rekord javítása a `/etc/bind/db.hosting.test` fájlban, `named-checkzone`, majd `sudo rndc reload`.
 - **Megjegyzés:** több névszerver esetén a SOA serial számot is növelni kell.
+
+## 3. 404 Not Found
+
+- **Tünet:** az `ugyfel2.hosting.test` 404-et ad.
+- **Ok:** az Nginx beállításában a `root` sor elírt útvonalra mutatott (`htm` helyett `html`), ezért a kért fájl nem található.
+- **Ellenőrzés:** `dig` (a név jó), `curl -I` (404, vagyis a kérés elérte az Nginxet), `sudo tail /var/log/nginx/error.log` (az Nginx által keresett útvonal), `grep root` és `ls` (a beállítás és a valódi mappa összevetése).
+- **Javítás:** a `root` útvonal javítása, majd `sudo nginx -t && sudo systemctl reload nginx`.
+- **Megjegyzés:** az `nginx -t` nem fogja meg a nem létező mappát, mert az logikai hiba. Javítás után `curl`-lel is tesztelni kell.
